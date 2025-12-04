@@ -2,7 +2,8 @@
   "string": [
     {
       "name": "app_name",
-      "value": "MyHarmony"
+      "value": "MyHarmony",
+      "serverIP": "10.135.29.28"
     }
   ]
 }

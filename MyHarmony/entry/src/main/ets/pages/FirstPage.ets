@@ -1,4 +1,5 @@
-
+@Entry
+@Preview
 @Component
 struct  FistPage{
   build() {
