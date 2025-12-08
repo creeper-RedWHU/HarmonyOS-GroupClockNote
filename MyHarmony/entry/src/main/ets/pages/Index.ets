@@ -31,8 +31,11 @@ struct Index {
   Context =this.getUIContext().getHostContext() as common.UIAbilityContext;
   UIContext= this.getUIContext();
 
-  jump():void{
-    router.pushUrl({url:'pages/FirstPage'},router.RouterMode.Standard, (err) => {
+  jump(username:string|null=null):void{
+    router.pushUrl({
+      url:'pages/FirstPage',
+      params:{userName:this.userName,userID:this.userID}
+    },router.RouterMode.Standard, (err) => {
       if (err) {
         console.error(`跳转失败, code is ${err.code}, message is ${err.message}`);
         return;
@@ -69,7 +72,7 @@ struct Index {
       ListItem(){
         Button('调试')
           .onClick(()=>{
-            this.jump();
+            this.jump('测试用户');
           })
       }
       ListItem() {

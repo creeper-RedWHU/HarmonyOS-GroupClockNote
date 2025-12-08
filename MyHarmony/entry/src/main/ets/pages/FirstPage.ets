@@ -5,12 +5,27 @@ import {CalendarPage} from './Calendar'
 import {Clock} from './Clock'
 import {Analyse} from './Analyse'
 import {Person} from './Person'
+import { router } from '@kit.ArkUI';
 
 @Entry
 @Component
 struct  FistPage{
+  //=====UserData=====
+  params = router.getParams() as Record<string, Object>;
+  @State userID:number=this.params['userID'] as number;
+  @State userName: string = this.params['userName'] as string;
+  //=====UserData=====
+
   @Provide('pathInfos') pathInfos: NavPathStack = new NavPathStack();
   private listArray: Array<string> = ['HOMEPAGE', 'Calendar', 'Clock', 'Analyse','Person'];
+  private diction:Record<string,string>={
+    'HOMEPAGE':'首页',
+    'Calendar':'专注日历',
+    'Clock':'专注时钟',
+    'Analyse':'专注分析',
+    'Person':'个人信息'
+  }
+
 
   @State choiceString:string='';
   @Builder
@@ -30,57 +45,83 @@ struct  FistPage{
   }
 
   build() {
-    List(){
-      ListItem(){
-        //包裹页面跳转
-
-        Navigation(this.pathInfos){
-          Text('hello from firstpage');
+    Navigation(this.pathInfos){
+      List(){
+        ListItem(){
+            Text('欢迎您，'+this.userName+'!')
+              .fontWeight(FontWeight.Bold)
+              .fontSize(30);
         }
-        .navDestination(this.PageMap)
-        .mode(NavigationMode.Auto)
+        .margin({bottom:'15%',left:'5%'})
+        ListItem(){
+          //包裹菜单悬浮件
+          List({ space: 12, initialIndex: 0 }) {
+            ForEach(this.listArray,(item:string)=>{
+              ListItem() {
+                Row() {
+                  Row() {
+                    Image($r("app.media."+item))
+                      .margin({left:'2%',right:'3%'})
+                      .width('85%')
+                      .invert(0)
+                  }
+                  .width(30)
+                  .height(30)
+                  .backgroundColor('#a8a8a8')
+                  .margin({ right: 20 })
+                  .borderRadius(20)
+                  .justifyContent(FlexAlign.Center)
 
-      }.height('90%')
-      ListItem(){
-        //包裹菜单悬浮件
-        Row(){
-          ForEach(this.listArray,(item:string)=>{
-            if(item === this.choiceString)
-            Image($r("app.media."+item))
-              .width('13%')
-              .margin({left:'2%',right:'3%'})
-              .invert(1)
-              .onClick(()=>{
-                this.choiceString=item;
-                this.pathInfos.pop();
-                console.log('before'+`${this.pathInfos.size()}`)
-                this.pathInfos.pushPathByName(`${item}`,'cans');
-                console.log(`${this.pathInfos.size()}`)
-                console.log('enter:'+item);
+                  Column() {
+                    Text(this.diction[item])
+                      .fontSize(16)
+                      .margin({ bottom: 5 })
+                  }
+                  .alignItems(HorizontalAlign.Start)
+
+                  Blank()
+
+                  Row()
+                    .width(12)
+                    .height(12)
+                    .margin({ right: 15 })
+                    .border({
+                      width: { top: 2, right: 2 },
+                      color: 0xcccccc
+                    })
+                    .rotate({ angle: 45 })
+                }
+                .borderRadius(15)
+                .shadow({ radius: 100, color: '#ededed' })
+                .width('90%')
+                .alignItems(VerticalAlign.Center)
+                .padding({ left: 15, top: 15, bottom: 15 })
+                .backgroundColor(Color.White)
+              }
+              .width('100%')
+              .onClick(() => {
+                this.pathInfos.pushPathByName(`${item}`, '详情页面参数')//将name指定的NaviDestination页面信息入栈,传递的参数为param
               })
-            else Image($r("app.media."+item))
-              .width('13%')
-              .margin({left:'2%',right:'3%'})
-              .invert(0)
-              .onClick(()=>{
-                this.choiceString=item;
-                this.pathInfos.pop();
-                this.pathInfos.pushPathByName(`${item}`,'cans');
-                console.log('enter:'+item);
-              })
-          },(item:string):string=>item)
+
+                // .onClick(()=>{
+                //   this.choiceString=item;
+                //   this.pathInfos.pop();
+                //   this.pathInfos.pushPathByName(`${item}`,'cans');
+                //   console.log('enter:'+item);
+                // })
+            },(item:string):string=>item)
+
+          }
         }
+
+      }.listDirection(Axis.Vertical)
+      .align(Alignment.Center)
+      .edgeEffect(EdgeEffect.Spring)
+      .sticky(StickyStyle.Header)
+      .chainAnimation(false)
       }
-      .borderColor(Color.Gray)
-      .borderWidth(1)
-      .height('10%')
-      .width('100%')
-    }.listDirection(Axis.Vertical)
-    .align(Alignment.Center)
-    .edgeEffect(EdgeEffect.Spring)
-    .sticky(StickyStyle.Header)
-    .chainAnimation(false)
-
+    .navDestination(this.PageMap)
+    .mode(NavigationMode.Auto)
   }
 }
 
