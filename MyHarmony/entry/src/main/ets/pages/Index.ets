@@ -31,6 +31,16 @@ struct Index {
   Context =this.getUIContext().getHostContext() as common.UIAbilityContext;
   UIContext= this.getUIContext();
 
+  jump():void{
+    router.pushUrl({url:'pages/FirstPage'},router.RouterMode.Standard, (err) => {
+      if (err) {
+        console.error(`跳转失败, code is ${err.code}, message is ${err.message}`);
+        return;
+      }
+      console.info('跳转成功');
+    })
+  }
+
   async validation(): Promise<boolean>{
 
     let username_encrypted= this.encryptUtil.hashPassword(this.userName);
@@ -56,6 +66,12 @@ struct Index {
 
   build() {
     List() {
+      ListItem(){
+        Button('调试')
+          .onClick(()=>{
+            this.jump();
+          })
+      }
       ListItem() {
         Text(this.title)
           .fontSize(50)
@@ -140,13 +156,7 @@ struct Index {
                       // }).catch((err:string)=>{
                       //   console.error("Start ability failed: " + err);
                       // });
-                      router.pushUrl({url:'pages/FirstPage'},router.RouterMode.Standard, (err) => {
-                        if (err) {
-                          console.error(`跳转失败, code is ${err.code}, message is ${err.message}`);
-                          return;
-                        }
-                        console.info('跳转成功');
-                      })
+                      this.jump();
                     }
                   },
                   cancel: () => {}
@@ -187,6 +197,7 @@ struct Index {
       ListItem() {
         Image($r('app.media.pic'))
       }
+
     }.listDirection(Axis.Vertical)
     .align(Alignment.Center)
     .margin({ left: '10%', top: '10%', right: "10%" })
