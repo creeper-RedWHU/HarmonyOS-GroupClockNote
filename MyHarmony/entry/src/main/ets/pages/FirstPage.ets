@@ -23,10 +23,20 @@ struct  FistPage{
     'Calendar':'专注日历',
     'Clock':'专注时钟',
     'Analyse':'专注分析',
-    'Person':'个人信息'
+    'Person':'个人主页'
   }
 
-
+  jump():void{
+    router.pushUrl({
+      url:'pages/Index'
+    },router.RouterMode.Standard, (err) => {
+      if (err) {
+        console.error(`跳转失败, code is ${err.code}, message is ${err.message}`);
+        return;
+      }
+      console.info('跳转成功');
+    })
+  }
   @State choiceString:string='';
   @Builder
   PageMap(pageName: string) {
@@ -39,7 +49,7 @@ struct  FistPage{
     }else if(pageName === 'Analyse'){
       Analyse({name:pageName});
     }else if(pageName === 'Person'){
-      Person({name:pageName});
+      Person({name:this.userName,userID:this.userID});
     }
 
   }
@@ -50,7 +60,10 @@ struct  FistPage{
         ListItem(){
             Text('欢迎您，'+this.userName+'!')
               .fontWeight(FontWeight.Bold)
-              .fontSize(30);
+              .fontSize(30)
+              .onClick(()=>{
+                this.jump();
+              })
         }
         .margin({bottom:'15%',left:'5%'})
         ListItem(){
@@ -65,6 +78,7 @@ struct  FistPage{
                       .width('85%')
                       .invert(0)
                   }
+                  // .backgroundColor(Color.Red)
                   .width(30)
                   .height(30)
                   .backgroundColor('#a8a8a8')

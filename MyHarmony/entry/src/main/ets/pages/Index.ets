@@ -4,8 +4,11 @@ import { router, Router } from '@kit.ArkUI';
 import relationalStore from '@ohos.data.relationalStore';
 import {UserDao} from './database';
 import {PasswordUtil} from './database';
+import {UserInformationDao} from './database'
+import {UserInformationFields} from './database'
 import {printDebug} from './printDebug';
 import { User } from './Entities/User';
+import {UserDBManager} from './database'
 
 const DOMAIN = 0x0000;
 
@@ -22,6 +25,13 @@ struct Index {
   @State userName: string = '';
   @State userPassword: string = '';
   @State buttonWord:string='确认'+this.title;
+
+  userPhone:string='';
+  userEmail:string='';
+  userGender:string='';
+  userCreated_at:string='';
+  userUpdated_at:string='';
+
   encryptUtil=new PasswordUtil();
   want:Want = {
     deviceId:'',
@@ -44,8 +54,37 @@ struct Index {
     })
   }
 
-  async validation(): Promise<boolean>{
+  async getUserData(): Promise<void>{
+    //如果没有就创建
+    //如果有就调取
 
+    // 查 userInformation
+    const info = await UserInformationDao.getUserInformationByUserId(this.userID);
+    if (!info) {
+      // 无则创建一条，先只填 user_id
+      await UserInformationDao.addUserInformation(this.userID, '', '', '');
+      console.log('success');
+      // 再取一次
+      const newInfo = await UserInformationDao.getUserInformationByUserId(this.userID);
+      if (newInfo) {
+        this.userPhone = newInfo.phone;
+        this.userEmail = newInfo.email;
+        this.userGender = newInfo.gender;
+        this.userCreated_at = newInfo.created_at;
+        this.userUpdated_at = newInfo.updated_at;
+      }
+    } else {
+      // 已存在则直接填充属性
+      this.userPhone = info.phone;
+      this.userEmail = info.email;
+      this.userGender = info.gender;
+      this.userCreated_at = info.created_at;
+      this.userUpdated_at = info.updated_at;
+    }
+  }
+
+  async validation(): Promise<boolean>{
+    await UserDBManager.initialize(getContext());
     let username_encrypted= this.encryptUtil.hashPassword(this.userName);
     let password_encrypted=this.encryptUtil.hashPassword(this.userPassword);
     if(this.title === '注册'){
@@ -54,6 +93,7 @@ struct Index {
       if(x.id === -1){
         console.log('enter2');
         this.userID =await UserDao.registerUser(username_encrypted,password_encrypted)
+        console.log('userid:'+this.userID)
         return true;
       }return false;
     }else{
@@ -143,6 +183,7 @@ struct Index {
               }else{
                 titleWord='登陆成功';
                 messageWord='欢迎'+this.userName+'用户';
+
               }
               this.UIContext.showAlertDialog(
                 {
@@ -154,11 +195,7 @@ struct Index {
                   confirm: {
                     value: '确认',
                     action: () => {
-                      // this.Context.startAbility(this.want).then(()=>{
-                      //   console.log("Start ability success");
-                      // }).catch((err:string)=>{
-                      //   console.error("Start ability failed: " + err);
-                      // });
+                      this.getUserData();
                       this.jump();
                     }
                   },

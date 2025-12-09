@@ -1,5 +1,5 @@
 import relationalStore from '@ohos.data.relationalStore';
-import { UIAbility } from '@kit.AbilityKit';
+import {UserInform} from './Entities/UserInform'
 import { User } from './Entities/User';
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
 const DB_NAME = 'database.db';
@@ -27,6 +27,7 @@ export class PasswordUtil {
 export class UserDBManager {
   private static rdbStore: relationalStore.RdbStore | null = null;
   static async initialize(context: Context) {
+    console.log("initial database")
     if (!UserDBManager.rdbStore) {
       const config: relationalStore.StoreConfig = {
         name: DB_NAME,
@@ -42,6 +43,7 @@ export class UserDBManager {
   }
   private static async createTable() {
     if (!UserDBManager.rdbStore) return;
+    //userLOGIN Table
     await UserDBManager.rdbStore.executeSql(
       `CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,11 +53,24 @@ export class UserDBManager {
         updated_at TEXT
       );`
     );
+    //userInformation Table
+    await UserDBManager.rdbStore.executeSql(
+      `CREATE TABLE IF NOT EXISTS userInformation (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,     -- 关联用户，假设和users表内id关联
+        phone TEXT,                   -- 手机号
+        email TEXT,                   -- 邮箱
+        gender TEXT,                  -- 性别（可以用TEXT，比如"男"/"女"/"其他"，也可用INT映射）
+        created_at TEXT,
+        updated_at TEXT
+      );`
+    );
+
   }
   static getStore(): relationalStore.RdbStore | null { return UserDBManager.rdbStore; }
 }
 //==========Dao==========
-
+//==========User LOGIN Dao==========
 export class UserDao {
   //==========注册==========
   // 注册: 查重账号, 不能同名
@@ -172,5 +187,81 @@ export class UserDao {
     predicate.equalTo('id', id);
     const rowsUpdated = await rdbStore.update(updateBucket, predicate);
     return rowsUpdated;
+  }
+}
+//==========User INFORMATION Dao==========
+export interface UserInformationFields {
+  phone?: string;
+  email?: string;
+  gender?: string;
+}
+export class UserInformationDao {
+
+  // 增（插入用户信息）
+  static async addUserInformation(user_id: number, phone: string, email: string, gender: string): Promise<number> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+
+    const now = new Date().toISOString();
+    const valueBucket: relationalStore.ValuesBucket = {
+      user_id,
+      phone,
+      email,
+      gender,
+      created_at: now,
+      updated_at: now
+    };
+    const rowId = await rdbStore.insert('userInformation', valueBucket);
+    return rowId;
+  }
+
+  // 查（通过 user_id 查询单条信息）
+  static async getUserInformationByUserId(user_id: number): Promise<UserInform | null> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+    const predicate = new relationalStore.RdbPredicates('userInformation');
+    predicate.equalTo('user_id', user_id);
+    const result = await rdbStore.query(predicate, ['id', 'user_id', 'phone', 'email', 'gender', 'created_at', 'updated_at']);
+    if (result.rowCount === 0) {
+      result.close();
+      return null;
+    }
+    result.goToFirstRow();
+    const info = new UserInform(
+      result.getLong(result.getColumnIndex('user_id')),
+      result.getString(result.getColumnIndex('phone')),
+      result.getString(result.getColumnIndex('email')),
+      result.getString(result.getColumnIndex('gender')),
+      result.getLong(result.getColumnIndex('id')),
+      result.getString(result.getColumnIndex('created_at')),
+      result.getString(result.getColumnIndex('updated_at'))
+    );
+    result.close();
+    return info;
+  }
+
+  // 改（更新用户信息，要求 user_id 唯一）
+  static async updateUserInformation(user_id: number, fields: UserInformationFields): Promise<number> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+    const valueBucket: relationalStore.ValuesBucket = {};
+    if (fields.phone !== undefined) valueBucket.phone = fields.phone;
+    if (fields.email !== undefined) valueBucket.email = fields.email;
+    if (fields.gender !== undefined) valueBucket.gender = fields.gender;
+    valueBucket.updated_at = new Date().toISOString();
+    const predicate = new relationalStore.RdbPredicates('userInformation');
+    predicate.equalTo('user_id', user_id);
+    const rowsUpdated = await rdbStore.update(valueBucket, predicate);
+    return rowsUpdated;
+  }
+
+  // 删（通过 user_id 删除）
+  static async deleteUserInformationByUserId(user_id: number): Promise<number> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+    const predicate = new relationalStore.RdbPredicates('userInformation');
+    predicate.equalTo('user_id', user_id);
+    const rowsDeleted = await rdbStore.delete(predicate);
+    return rowsDeleted;
   }
 }
