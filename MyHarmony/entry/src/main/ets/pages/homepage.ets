@@ -212,7 +212,6 @@ export struct HomePage {
       // promptAction({ message: "添加成功" }); // 如用提示
     } catch (err) {
       console.error("添加事项失败:", err);
-      // promptAction({ message: "添加失败" }); // 如用提示
     }
   }
 
@@ -307,7 +306,35 @@ export struct HomePage {
         ForEach(this.dayToDoArray,(item:DayWorks)=>{
           if(this.equalDay(item.day,this.choiceDate)){
             if(item.arrays.length){
+              ForEach(item.arrays,(item_a:Work)=>{
+                ListItem(){
+                  Row(){
+                    Toggle({ type: ToggleType.Checkbox, isOn: item_a.completed === 1 })
+                      .onChange(async (isOn: boolean) => {
+                        const newFinished = isOn ? 1 : 0;
+                        try {
+                          const res = await MatterInformationDao.updateMatterById(item_a.work_id, { finished: newFinished });
+                          if (res > 0) {
+                            item_a.completed = newFinished; // 若有本地状态同步
+                            // 如有需要可反馈或刷新页面
+                          }
+                        } catch (err) {
+                          console.error('更新事项完成状态失败', err);
+                        }
+                      })
+                    Text(`${item_a.description}`)
+                      .fontWeight(FontWeight.Bold)
+                      .width('80%')
+                      .fontSize(20)
 
+                    Text(`${item_a.category}`)
+                      .fontColor(Color.Orange)
+                      .textAlign(TextAlign.End)
+                      .fontSize(15)
+                  }
+                  .padding({left:'10%',bottom:5,top:5})
+                }
+              })
             }else{
               ListItem(){
                 Text('今天没有设置待办！')
