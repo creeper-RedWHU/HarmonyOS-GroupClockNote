@@ -41,7 +41,7 @@ struct  FistPage{
   @Builder
   PageMap(pageName: string) {
     if (pageName === 'HOMEPAGE') {
-      HomePage({name:pageName});
+      HomePage({name:pageName,userID:this.userID});
     }else if(pageName === 'Calendar'){
       CalendarPage({name:pageName});
     }else if(pageName === 'Clock'){

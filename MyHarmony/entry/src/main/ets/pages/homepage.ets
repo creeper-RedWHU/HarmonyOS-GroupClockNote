@@ -1,5 +1,8 @@
 import {DayWorks} from './Entities/DayWorks'
 import {CJCalendar } from 'cjcalendar'
+import { Work } from './Entities/Work';
+import { MatterInformationDao } from './database';
+import { ExpandMode } from '@kit.ArkUI';
 
 class  FontWithBG{
   fontColor:string;
@@ -10,12 +13,64 @@ class  FontWithBG{
   }
 }
 
+@CustomDialog
+export struct HomePageAddDialog{
+  cancel: () => void = () => {
+  }
+  confirm: (x:string,y:string) => void = (x:string,y:string) => {
+  }
+  controller: CustomDialogController;
+  columnName:string='';
+  @State updateStringContent:string='';
+  @State updateStringCategory:string='';
+
+
+  build() {
+    Column() {
+      Text('新增事务').fontSize(20).margin({ top: 10, bottom: 10 })
+      Row(){
+        Text('待办内容')
+        TextInput({ placeholder: '请输入待办内容' })
+          .onChange((value: string) => {
+            this.updateStringContent = value;
+          })
+      }.padding(20)
+      Row(){
+        Text('待办分类')
+        TextInput({ placeholder: '请输入待办分类' })
+          .onChange((value: string) => {
+            this.updateStringCategory = value;
+          })
+      }.padding(20)
+      Flex({ justifyContent: FlexAlign.SpaceAround }) {
+        Button('取消')
+          .onClick(() => {
+            this.controller.close();
+            if (this.cancel) {
+              this.cancel();
+            }
+          }).backgroundColor(0xffffff).fontColor(Color.Red)
+        Button('确认')
+          .onClick(() => {
+            this.controller.close();
+            if (this.confirm) {
+
+              this.confirm(this.updateStringContent,this.updateStringCategory);
+            }
+          }).backgroundColor(0xffffff).fontColor(Color.Blue)
+      }.margin({ bottom: 10 })
+    }
+  }
+}
+
 @Component
 export struct HomePage {
   pathInfos: NavPathStack = new NavPathStack();
+  // @State dayToDoArray:Array<DayWorks>=new Array<DayWorks>();
   @State dayToDoArray:Array<DayWorks>=new Array<DayWorks>();
   @State dateArray:Array<Date>=new Array<Date>();
   name:string = '';
+  userID:number=0;
   addDays = (date: Date, days: number): Date => {
     const result = new Date(date);
     result.setDate(result.getDate() + days);
@@ -24,6 +79,29 @@ export struct HomePage {
   @State colorList:Array<FontWithBG>=new Array<FontWithBG>();
 
   @State choiceDate:Date=new Date();
+
+  dialogController: CustomDialogController = new CustomDialogController({
+    builder: HomePageAddDialog({
+      cancel: ()=> { this.onCancel() },
+      confirm:this.onAccept.bind(this)
+    }),
+  })
+
+  onCancel() {
+    console.info('Callback homepage when the first button is clicked');
+  }
+
+  async onAccept(x:string,y:string) {
+    console.info('Callback homepage when the second button is clicked'+x);
+    await this.addSomeWorkToDay(x,y);
+    while(this.dayToDoArray.length)this.dayToDoArray.pop();
+    for(let i=0;i<7;i++){
+      await this.getDayToDoArray(this.dateArray[i]);
+    }
+    this.dayToDoArray=[...this.dayToDoArray];
+    // await this.changeUserData(this.changeColumn,this.result);
+  }
+
 
   normalBGColor:string='#018f8f';
   normalFontColor:string='#f7fbfb';
@@ -50,6 +128,13 @@ export struct HomePage {
     return year1===year2 && month1===month2 && day1===day2;
   }
 
+  formatTimeStampByYMD(date:Date){
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   formatTimestamp(date:Date) {
     const dater = new Date();
     const year = date.getFullYear();
@@ -62,7 +147,7 @@ export struct HomePage {
   }
 
   //初始化算法：获取当前日期，然后添加对应星期，
-  init():void{
+  async init(): Promise<void>{
     let date = new Date();
     this.choiceDate=date;
     let dayOfWeek=date.getDay();
@@ -74,14 +159,61 @@ export struct HomePage {
         new FontWithBG(this.equalDay(new Date(),this.dateArray[i])?this.choiceFontColor:this.normalFontColor,
                        this.equalDay(new Date(),this.dateArray[i])?this.choiceBGColor:this.normalBGColor)
       )
+      await this.getDayToDoArray(this.dateArray[this.dateArray.length-1]);
     }
     for(let i=0;i<7;i++){
       console.log(this.formatTimestamp(this.dateArray[i]))
     }
   }
 
-  getDayToDoArray():void{
+  async getDayToDoArray(date: Date): Promise<void> {
+    let dateString = this.formatTimeStampByYMD(date);
+    let works: Work[] = [];
+    try {
+      const matters = await MatterInformationDao.getMatterByUserIdAndDate(this.userID, dateString);
+      for (const matter of matters) {
+        // category 如为数字用 Number，字符串则直接赋值
+        const w = new Work(
+          matter.id,
+          matter.user_id,
+          // matter.title, // 你的数据表没有title，就不用
+          matter.content,
+          matter.category,
+          new Date(matter.ascription_time)
+        );
+        w.completed = matter.finished;
+        works.push(w);
+      }
+      console.log("日期："+dateString+"有"+works.length+"件事被添加");
+    } catch (err) {
+      console.error('获取事项失败', err);
+    }
+    this.dayToDoArray.push(new DayWorks(date, works));
+  }
 
+  async addSomeWorkToDay(content: string, category: string): Promise<void> {
+    let userid = this.userID;
+    let timeString = this.formatTimeStampByYMD(this.choiceDate);
+    let finished = 0;
+
+    // 调用 MatterInformationDao.addMatter 方法插入
+    try {
+      await MatterInformationDao.addMatter({
+        user_id: userid,
+        ascription_time: timeString,
+        category: category,
+        content: content,
+        finished: finished,
+        // created_at/updated_at会由DAO自动填充
+      });
+      console.log("insert 成功!")
+      // 可选：插入成功后刷新事项列表或提示
+      // await this.refreshDayToDoArray(this.choiceDate); // 如有此方法
+      // promptAction({ message: "添加成功" }); // 如用提示
+    } catch (err) {
+      console.error("添加事项失败:", err);
+      // promptAction({ message: "添加失败" }); // 如用提示
+    }
   }
 
   build() {
@@ -89,7 +221,15 @@ export struct HomePage {
       List({ space: 12, initialIndex: 0 }){
         ListItem(){
           //画图 曲线
+          List(){
+            //星期
+            ForEach(this.dayToDoArray,(item:DayWorks)=>{
+              ListItem(){
+                Text(`${ item.arrays.length }`)
+              }.width('14.2%').padding({left:'3%',right:"3%"})
 
+            })
+          }.listDirection(Axis.Horizontal)
         }
         ListItem(){
           List(){
@@ -163,7 +303,31 @@ export struct HomePage {
         }
       }
       .backgroundColor(this.normalBGColor)
+      List(){
+        ForEach(this.dayToDoArray,(item:DayWorks)=>{
+          if(this.equalDay(item.day,this.choiceDate)){
+            if(item.arrays.length){
 
+            }else{
+              ListItem(){
+                Text('今天没有设置待办！')
+                  .fontColor(Color.Gray)
+                  .fontWeight(FontWeight.Bold)
+                  .textAlign(TextAlign.Center)
+              }.padding({top:20,bottom:20,left:'10%',right:'10%'})
+            }
+
+          }
+        })
+      }
+      .height('80%')
+      Column({space:'center'}){
+        Image($r('app.media.plus'))
+          .width("15%")
+          .onClick(()=>{
+            this.dialogController.open();
+          })
+      }
 
     }.onReady((contextNav:NavDestinationContext)=>{
       this.pathInfos=contextNav.pathStack;
