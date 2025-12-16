@@ -324,15 +324,33 @@ export struct HomePage {
                       })
                     Text(`${item_a.description}`)
                       .fontWeight(FontWeight.Bold)
-                      .width('80%')
-                      .fontSize(20)
+                      .width('60%')
+                      .fontSize(25)
 
                     Text(`${item_a.category}`)
                       .fontColor(Color.Orange)
-                      .textAlign(TextAlign.End)
-                      .fontSize(15)
+                      .fontSize(20)
+                      .width('10%')
+                    Image($r('app.media.del'))
+                      .width(30)
+                      .margin({left:50})
+                      .align(Alignment.End)
+                      .onClick(async ()=>{
+                        try {
+                          const res = await MatterInformationDao.deleteMatterById(item_a.work_id);
+                          while(this.dayToDoArray.length)this.dayToDoArray.pop();
+                          for(let i=0;i<7;i++){
+                            await this.getDayToDoArray(this.dateArray[i]);
+                          }
+                          this.dayToDoArray=[...this.dayToDoArray];
+                        } catch (err) {
+                          console.error('更新事项完成状态失败', err);
+                        }
+                      })
+
                   }
-                  .padding({left:'10%',bottom:5,top:5})
+                  .padding({bottom:5,top:5})
+                  .width('100%')
                 }
               })
             }else{
