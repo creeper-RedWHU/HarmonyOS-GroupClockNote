@@ -6,6 +6,7 @@ import {Clock} from './Clock'
 import {Analyse} from './Analyse'
 import {Person} from './Person'
 import { router } from '@kit.ArkUI';
+import { User } from './Entities/User';
 
 @Entry
 @Component
@@ -43,7 +44,7 @@ struct  FistPage{
     if (pageName === 'HOMEPAGE') {
       HomePage({name:pageName,userID:this.userID});
     }else if(pageName === 'Calendar'){
-      CalendarPage({name:pageName});
+      CalendarPage({userID:this.userID});
     }else if(pageName === 'Clock'){
       Clock({name:pageName});
     }else if(pageName === 'Analyse'){

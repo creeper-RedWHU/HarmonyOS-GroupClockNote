@@ -34,6 +34,7 @@ export struct HomePageAddDialog{
           .onChange((value: string) => {
             this.updateStringContent = value;
           })
+          .margin({right:10})
       }.padding(20)
       Row(){
         Text('待办分类')
@@ -41,6 +42,7 @@ export struct HomePageAddDialog{
           .onChange((value: string) => {
             this.updateStringCategory = value;
           })
+          .margin({right:10})
       }.padding(20)
       Flex({ justifyContent: FlexAlign.SpaceAround }) {
         Button('取消')
