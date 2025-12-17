@@ -207,7 +207,7 @@ export struct Clock{
       const beginTimeStr = this.formatTimestamp(this.beginTime);
       const endTimeStr = this.formatTimestamp(this.endTime);
       const duration = Math.floor((this.endTime. getTime() - this.beginTime.getTime()) / 1000);
-
+      if(duration === 0)return;
       await FocusRecordDao.addFocusRecord({
         user_id: this.userID,
         begin_time: beginTimeStr,
@@ -469,10 +469,10 @@ export struct Clock{
       this.pathInfos = contextNav.pathStack;
     })
     .title('专注时钟', {backgroundColor: this.normalBGColor})
-    .onShown(() => {
+    .onShown(async () => {
       //========add start========
       // 页面显示时加载专注记录
-      this.loadFocusRecords();
+      await this.loadFocusRecords();
       //========add end========
     })
   }

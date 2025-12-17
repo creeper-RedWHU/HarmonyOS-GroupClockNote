@@ -48,7 +48,7 @@ struct  FistPage{
     }else if(pageName === 'Clock'){
       Clock({userID:this.userID,userName:this.userName});
     }else if(pageName === 'Analyse'){
-      Analyse({name:pageName});
+      Analyse({name:this.userName,userID:this.userID});
     }else if(pageName === 'Person'){
       Person({name:this.userName,userID:this.userID});
     }
