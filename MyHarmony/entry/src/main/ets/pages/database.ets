@@ -2,7 +2,9 @@ import relationalStore from '@ohos.data.relationalStore';
 import {UserInform} from './Entities/UserInform'
 import { User } from './Entities/User';
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
+import {FocusRecord} from './Entities/RecordOFocus';
 const DB_NAME = 'database.db';
+
 
 export class PasswordUtil {
   genKeyMaterialBlob(data: Array<number>): cryptoFramework.DataBlob {
@@ -78,6 +80,23 @@ export class UserDBManager {
         updated_at TEXT
       );`
     );
+    //========add start========
+    // 在数据库初始化文件中添加专注记录表的创建语句
+
+    // focus_record 专注记录表
+    await UserDBManager.rdbStore. executeSql(
+      `CREATE TABLE IF NOT EXISTS focus_record (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,      -- 关联 userInformation 表的 id
+        begin_time TEXT NOT NULL,       -- 开始专注时间
+        end_time TEXT NOT NULL,         -- 结束专注时间
+        duration INTEGER NOT NULL,      -- 专注时长（秒）
+        completed INTEGER NOT NULL DEFAULT 1,  -- 是否完成（1=完成，0=放弃）
+        created_at TEXT,
+        updated_at TEXT
+      );`
+    );
+    //========add end========
   }
   static getStore(): relationalStore.RdbStore | null { return UserDBManager.rdbStore; }
 }
@@ -277,8 +296,6 @@ export class UserInformationDao {
     return rowsDeleted;
   }
 }
-//==========matter_information Dao==========
-
 //==========Matter INFORMATION Dao==========
 export interface MatterInformationFields {
   user_id?: number;
@@ -466,3 +483,166 @@ export class MatterInformationDao {
     return rowsUpdated;
   }
 }
+//========add start========
+// FocusRecordDao. ts - 专注记录数据访问对象
+// 专注记录字段接口（用于更新操作，可选）
+export interface FocusRecordFields {
+  user_id?: number;
+  begin_time?: string;
+  end_time?: string;
+  duration?: number;
+  completed?: number;
+}
+
+
+
+// 插入时使用的接口
+interface AddFocusRecordParams {
+  user_id: number;
+  begin_time: string;
+  end_time: string;
+  duration: number;
+  completed?: number;
+}
+
+export class FocusRecordDao {
+
+  // 1. 根据传入的三个字段插入数据表
+  static async addFocusRecord(fields: AddFocusRecordParams): Promise<number> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+
+    const now = new Date().toISOString();
+    const valueBucket: relationalStore.ValuesBucket = {
+      user_id: fields.user_id,
+      begin_time: fields.begin_time,
+      end_time: fields.end_time,
+      duration: fields.duration,
+      completed: fields.completed ?? 1, // 默认为完成状态
+      created_at: now,
+      updated_at: now
+    };
+
+    const rowId = await rdbStore. insert('focus_record', valueBucket);
+    console.log(`专注记录插入成功，rowId: ${rowId}`);
+    return rowId;
+  }
+
+  // 2. 根据uid和日期查找（日期格式为 YYYY-MM-DD，匹配 begin_time 的日期部分）
+  static async getFocusRecordByUserIdAndDate(user_id: number, date: string): Promise<FocusRecord[]> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+
+    // 使用 LIKE 匹配 begin_time 的日期部分（YYYY-MM-DD）
+    const predicate = new relationalStore.RdbPredicates('focus_record');
+    predicate.equalTo('user_id', user_id)
+      .like('begin_time', `${date}%`); // 匹配以指定日期开头的记录
+
+    const result = await rdbStore.query(
+      predicate,
+      ['id', 'user_id', 'begin_time', 'end_time', 'duration', 'completed', 'created_at', 'updated_at']
+    );
+
+    const records: FocusRecord[] = [];
+
+    if (result.rowCount === 0) {
+      result.close();
+      return records;
+    }
+
+    for (result.goToFirstRow(); result.rowIndex < result.rowCount; result.goToNextRow()) {
+      records.push(new FocusRecord(
+        result.getLong(result.getColumnIndex('user_id')),
+        result.getString(result. getColumnIndex('begin_time')),
+        result.getString(result.getColumnIndex('end_time')),
+        result.getLong(result.getColumnIndex('duration')),
+        result.getLong(result.getColumnIndex('completed')),
+        result.getLong(result.getColumnIndex('id')),
+        result.getString(result.getColumnIndex('created_at')),
+        result.getString(result.getColumnIndex('updated_at'))
+      ));
+    }
+
+    result.close();
+    return records;
+  }
+
+  // 3. 根据用户ID查询所有专注记录（额外功能）
+  static async getFocusRecordByUserId(user_id: number): Promise<FocusRecord[]> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+
+    const predicate = new relationalStore.RdbPredicates('focus_record');
+    predicate.equalTo('user_id', user_id)
+      .orderByDesc('begin_time'); // 按开始时间降序排列
+
+    const result = await rdbStore.query(
+      predicate,
+      ['id', 'user_id', 'begin_time', 'end_time', 'duration', 'completed', 'created_at', 'updated_at']
+    );
+
+    const records: FocusRecord[] = [];
+
+    if (result.rowCount === 0) {
+      result.close();
+      return records;
+    }
+
+    for (result.goToFirstRow(); result.rowIndex < result.rowCount; result. goToNextRow()) {
+      records.push(new FocusRecord(
+        result.getLong(result.getColumnIndex('user_id')),
+        result.getString(result.getColumnIndex('begin_time')),
+        result.getString(result.getColumnIndex('end_time')),
+        result.getLong(result.getColumnIndex('duration')),
+        result.getLong(result.getColumnIndex('completed')),
+        result.getLong(result.getColumnIndex('id')),
+        result.getString(result.getColumnIndex('created_at')),
+        result.getString(result.getColumnIndex('updated_at'))
+      ));
+    }
+
+    result.close();
+    return records;
+  }
+
+  // 4. 获取用户总专注时长（秒）
+  static async getTotalFocusDuration(user_id: number): Promise<number> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+
+    const predicate = new relationalStore.RdbPredicates('focus_record');
+    predicate.equalTo('user_id', user_id)
+      .equalTo('completed', 1); // 只统计完成的专注
+
+    const result = await rdbStore.query(predicate, ['duration']);
+    let totalDuration = 0;
+
+    if (result.rowCount > 0) {
+      for (result.goToFirstRow(); result.rowIndex < result.rowCount; result.goToNextRow()) {
+        totalDuration += result.getLong(result.getColumnIndex('duration'));
+      }
+    }
+
+    result.close();
+    return totalDuration;
+  }
+
+  // 5. 获取用户今日专注次数
+  static async getTodayFocusCount(user_id: number): Promise<number> {
+    const rdbStore = UserDBManager.getStore();
+    if (!rdbStore) throw new Error('Database not initialized');
+
+    const today = new Date().toISOString().split('T')[0]; // 获取今天日期 YYYY-MM-DD
+    const predicate = new relationalStore. RdbPredicates('focus_record');
+    predicate.equalTo('user_id', user_id)
+      .like('begin_time', `${today}%`)
+      .equalTo('completed', 1);
+
+    const result = await rdbStore.query(predicate);
+    const count = result.rowCount;
+    result.close();
+
+    return count;
+  }
+}
+//========add end========
